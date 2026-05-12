@@ -46,6 +46,7 @@ async function callOllama(
       model: model,
       prompt: prompt,
       system: system,
+      keep_alive: "10m",
       stream: false,
     }),
   });
@@ -55,7 +56,7 @@ async function callOllama(
 }
 
 export async function getQuestions(): Promise<string> {
-  //return "under construction";
+  const underConstruction = true;
   const system = `You are a tutor asking open short answer questions on the provided study material. Provide only one question and a short correct solution in a specified json schema.
   Use the language used in the document.
   You will get a list of questions that you already asked.
@@ -69,7 +70,9 @@ export async function getQuestions(): Promise<string> {
   correctanswer:string}</returnscema>`;
   const prompt =
     questions.length > 0 ? questions.toString() : "No previus questions";
-  const data = (await callOllama(prompt, system, "gemma4:e4b")).response;
+  const data = underConstruction
+    ? "Under construction"
+    : (await callOllama(prompt, system, "gemma4:e4b")).response;
   let JsonData: Object;
   try {
     JsonData = JSON.parse(data);
@@ -107,30 +110,59 @@ export async function getGrades() {
   }
   if (dataToGrade.length > 0) {
     const system = `
-    Your job is to grade the answers to questions based on notes. You will recieve the notes, the questions and the answers and will have to grade every answer based on the following paramiters:
-    correctnis: Is the answer correct? (scale of 1 to 10)
+    Your job is to grade the answer to a question based on notes. You will recieve the notes, the question and the answer and will have to grade every answer based on the following paramiters:
+    correctnes: Is the answer correct? (scale of 1 to 10)
     completenes: Is the question completely answered? (scale of 1 to 10)
-    score: (correctnis-completenes)/2. Round up or down as you see fit.
+    score: (correctnis+completenes)/2. Round up or down as you see fit.
     <notes>${text}</notes}
-    <retunrscema>{
-  "properties": {
-    "question": { "type": "string" },
-    "answer": { "type": ["string", "null"] },
-    "correctanswer":{"type":"string"}
-    "corectnes": { "type": ["number", "null"] },
-    "completens": { "type": ["number", "null"] },
-    "score": { "type": ["number", "null"] }
-  } </returnscema>
-   return the given answers in a JSON List in the return scema.
+    <example_retunrscema> [{
+    "correctnes": 0.9,
+    "completenes": 1.0,
+    "score": 0.95
+  }] </example_returnscema>
+   return the given answers in a JSON List in the return scema. Output JSON only. No MD syntax.
     `;
+
+    const GraidList = [];
+    for (const q of dataToGrade) {
+      const rawGraid = await callOllama(q.toString(), system, "gemma4:e4b");
+      let parsedGraid: Partial<QandA>;
+      try {
+        parsedGraid = JSON.parse(rawGraid.response);
+      } catch (e) {
+        console.error(
+          `Graid could not be parsed. Graid: ${rawGraid} Error: ${e}`,
+        );
+        continue;
+      }
+      const newMocGrade = q;
+      Object.assign(newMocGrade, {
+        correctnes: parsedGraid.correctnes,
+        completeness: parsedGraid.completeness,
+        score: parsedGraid.score,
+      });
+      const newGrade = QandASchema.safeParse(newMocGrade);
+      if (newGrade.success) {
+        const index = questions.indexOf(q);
+        if (index !== -1) {
+          questions[index] = newGrade.data;
+        } else {
+          console.warn(`Question(${q.question}) was not found in questions:${questions}.
+            Searchquestion: ${newGrade.data}`);
+        }
+      } else {
+        console.error(
+          `New Grade could not be parsed as QandA. Error: ${newGrade.error} Grade${newMocGrade}`,
+        );
+      }
+    }
     const rawGraids = await callOllama(
       dataToGrade.toString(),
       system,
       "gemma4:e4b",
     );
-    let GraidList: [];
     try {
-      GraidList = JSON.parse(rawGraids.response);
+      GraidList.push(JSON.parse(rawGraids.response));
     } catch (error) {
       console.error(
         `Parced data is not a correct array. Data: ${rawGraids.response}. Error:${error}`,
