@@ -1,5 +1,5 @@
-import text from "./assets/notizen.md?raw";
-import * as z from "zod";
+import text from './assets/notizen.md?raw';
+import * as z from 'zod';
 
 const QandASchema = z.object({
   question: z.string(),
@@ -25,9 +25,7 @@ export const ollamaGenerateResponseSchema = z.object({
   eval_duration: z.number(),
 });
 
-export type OllamaGenerateResponse = z.infer<
-  typeof ollamaGenerateResponseSchema
->;
+export type OllamaGenerateResponse = z.infer<typeof ollamaGenerateResponseSchema>;
 export type QandA = z.infer<typeof QandASchema>;
 
 const questions: QandA[] = [];
@@ -37,16 +35,16 @@ async function callOllama(
   system: string,
   model: string,
 ): Promise<OllamaGenerateResponse> {
-  const response = await fetch("http://localhost:11434/api/generate", {
-    method: "POST",
+  const response = await fetch('http://localhost:11434/api/generate', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       model: model,
       prompt: prompt,
       system: system,
-      keep_alive: "10m",
+      keep_alive: '10m',
       stream: false,
     }),
   });
@@ -55,30 +53,37 @@ async function callOllama(
   return data;
 }
 
-export async function getQuestions(): Promise<string> {
-  const underConstruction = true;
-  const system = `You are a tutor asking open short answer questions on the provided study material. Provide only one question and a short correct solution in a specified json schema.
-  Use the language used in the document.
-  You will get a list of questions that you already asked.
-  Do not include any markdown syntax. Give just the table.
+export let isFetchingQuestion = false;
 
-  <studymaterial>
-  ${text}
-  </studymaterial>
-  <returnscema>
-  {question:string,
-  correctanswer:string}</returnscema>`;
-  const prompt =
-    questions.length > 0 ? questions.toString() : "No previus questions";
+export async function getQuestion(): Promise<QandA | null> {
+  const underConstruction = false;
+  isFetchingQuestion = true;
+  const system = `You are a tutor asking open short answer questions on the provided study material.
+
+Provide only one question.
+
+Use the language used in the document.
+You will get a list of questions you have already asked — do not repeat them.
+
+Return ONLY a valid JSON object. No markdown, no code fences, no explanation, no extra text — just the raw JSON object.
+
+<studymaterial>
+${text}
+</studymaterial>
+
+<schema>
+{"question": string, "correctanswer": string}
+</schema>`;
+  const prompt = questions.length > 0 ? JSON.stringify(questions) : 'No previus questions';
   const data = underConstruction
-    ? "Under construction"
-    : (await callOllama(prompt, system, "gemma4:e4b")).response;
+    ? 'Under construction'
+    : (await callOllama(prompt, system, 'gemma4:e4b')).response;
   let JsonData: Object;
   try {
     JsonData = JSON.parse(data);
   } catch (e) {
-    console.error(`Result could not be parsed. Error: ${e}`);
-    return "Result could not be parsed. View console for more info.";
+    console.error(`Result could not be parsed. Error: ${e}. Data: ${data}`);
+    return null;
   }
   const newQuestionData = JsonData;
   const result = QandASchema.safeParse(newQuestionData);
@@ -86,9 +91,10 @@ export async function getQuestions(): Promise<string> {
     questions.push(result.data);
   } else {
     console.error(`Question was not valid. Error: ${result.error}`);
-    return "Question could not be saved. Check error console for more info.";
+    return null;
   }
-  return result.data.question;
+  isFetchingQuestion = false;
+  return result.data;
 }
 
 export function storeAnswer(AiQuestion: string, UserAnswer: string) {
@@ -98,7 +104,7 @@ export function storeAnswer(AiQuestion: string, UserAnswer: string) {
       return;
     }
   }
-  console.error("Question not in Database");
+  console.error('Question not in Database');
 }
 
 export async function getGrades() {
@@ -122,17 +128,13 @@ export async function getGrades() {
   }] </example_returnscema>
    return the given answers in a JSON List in the return scema. Output JSON only. No MD syntax.
     `;
-
-    const GraidList = [];
     for (const q of dataToGrade) {
-      const rawGraid = await callOllama(q.toString(), system, "gemma4:e4b");
+      const rawGraid = await callOllama(q.toString(), system, 'gemma4:e4b');
       let parsedGraid: Partial<QandA>;
       try {
         parsedGraid = JSON.parse(rawGraid.response);
       } catch (e) {
-        console.error(
-          `Graid could not be parsed. Graid: ${rawGraid} Error: ${e}`,
-        );
+        console.error(`Graid could not be parsed. Graid: ${rawGraid} Error: ${e}`);
         continue;
       }
       const newMocGrade = q;
@@ -156,41 +158,9 @@ export async function getGrades() {
         );
       }
     }
-    const rawGraids = await callOllama(
-      dataToGrade.toString(),
-      system,
-      "gemma4:e4b",
-    );
-    try {
-      GraidList.push(JSON.parse(rawGraids.response));
-    } catch (error) {
-      console.error(
-        `Parced data is not a correct array. Data: ${rawGraids.response}. Error:${error}`,
-      );
-      return;
-    }
-    const validGraids: QandA[] = [];
-    for (const item in GraidList) {
-      try {
-        const validItem = QandASchema.parse(item);
-        validGraids.push(validItem);
-      } catch (e) {
-        console.error(`Item did not fit scema. ${e}`);
-      }
-    }
-    validGraids.forEach((validGraid) => {
-      const matchquestion = validGraid.question;
-      const indexToUpdate = questions.findIndex(
-        (question) => question.question == matchquestion,
-      );
-      if (indexToUpdate !== -1) {
-        const questionToUpdate = questions[indexToUpdate];
-        questionToUpdate.completeness = validGraid.completeness;
-        questionToUpdate.correctnes = validGraid.correctnes;
-        questionToUpdate.score = validGraid.score;
-      } else {
-        console.warn(`No matching question found. Question: ${validGraid}`);
-      }
-    });
   }
+}
+
+export function getQandAs(): QandA[] {
+  return questions;
 }
