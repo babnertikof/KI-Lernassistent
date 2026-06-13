@@ -5,9 +5,10 @@ const QandASchema = z.object({
   question: z.string(),
   answer: z.string().optional(),
   correctanswer: z.string().optional(),
-  correctnes: z.number().min(1).max(10).optional(),
-  completeness: z.number().min(1).max(10).optional(),
-  score: z.number().min(1).max(10).optional(),
+  correctness: z.number().min(0).max(10).optional(),
+  completeness: z.number().min(0).max(10).optional(),
+  score: z.number().min(0).max(10).optional(),
+  id: z.string(),
 });
 
 export const ollamaGenerateResponseSchema = z.object({
@@ -85,6 +86,7 @@ ${text}
     console.error(`Result could not be parsed. Error: ${e}. Data: ${data}`);
     return null;
   }
+  JsonData = { ...JsonData, id: crypto.randomUUID() };
   const newQuestionData = JsonData;
   const result = QandASchema.safeParse(newQuestionData);
   if (result.success) {
@@ -110,42 +112,51 @@ export function storeAnswer(AiQuestion: string, UserAnswer: string) {
 export async function getGrades() {
   const dataToGrade: QandA[] = [];
   for (const q of questions) {
-    if (q.score == null) {
+    if (q.score == null && q.answer != null) {
       dataToGrade.push(q);
     }
   }
   if (dataToGrade.length > 0) {
     const system = `
     Your job is to grade the answer to a question based on notes. You will recieve the notes, the question and the answer and will have to grade every answer based on the following paramiters:
-    correctnes: Is the answer correct? (scale of 1 to 10)
-    completenes: Is the question completely answered? (scale of 1 to 10)
-    score: (correctnis+completenes)/2. Round up or down as you see fit.
+    correctnes: Is the answer correct? (scale of 0 to 10)
+    completenes: Is the question completely answered? (scale of 0 to 10)
+    score: (correctnes+completenes)/2. Round up or down as you see fit.
     <notes>${text}</notes}
-    <example_retunrscema> [{
-    "correctnes": 0.9,
-    "completenes": 1.0,
-    "score": 0.95
-  }] </example_returnscema>
-   return the given answers in a JSON List in the return scema. Output JSON only. No MD syntax.
+    <example_retunrscema> {
+    "correctness": 10,
+    "completeness": 6,
+    "score": 8
+  } </example_returnscema>
+   Return ONLY a valid JSON object. No markdown, no code fences, no explanation, no extra text — just the raw JSON object.
     `;
     for (const q of dataToGrade) {
-      const rawGraid = await callOllama(q.toString(), system, 'gemma4:e4b');
+      const rawGraid = await callOllama(JSON.stringify(q), system, 'gemma4:e4b');
+      if (!rawGraid || typeof rawGraid.response !== 'string') {
+        console.error(
+          `Skipping Graid processing because rawGraid or its response field is invalid.`,
+        );
+        continue;
+      }
+
       let parsedGraid: Partial<QandA>;
       try {
         parsedGraid = JSON.parse(rawGraid.response);
       } catch (e) {
-        console.error(`Graid could not be parsed. Graid: ${rawGraid} Error: ${e}`);
+        console.error(
+          `Graid could not be parsed. Graid data: ${rawGraid.response}. Error: ${(e as Error).message}`,
+        );
         continue;
       }
-      const newMocGrade = q;
-      Object.assign(newMocGrade, {
-        correctnes: parsedGraid.correctnes,
+      const newMocGrade = {
+        ...q,
+        correctness: parsedGraid.correctness,
         completeness: parsedGraid.completeness,
         score: parsedGraid.score,
-      });
+      };
       const newGrade = QandASchema.safeParse(newMocGrade);
       if (newGrade.success) {
-        const index = questions.indexOf(q);
+        const index = questions.findIndex((item) => item.id == q.id);
         if (index !== -1) {
           questions[index] = newGrade.data;
         } else {
@@ -158,6 +169,8 @@ export async function getGrades() {
         );
       }
     }
+  } else {
+    return;
   }
 }
 

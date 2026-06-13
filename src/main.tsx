@@ -6,6 +6,7 @@ import { getQandAs } from './main';
 import type { QandA } from './main';
 import { create } from 'zustand';
 import './index.css';
+import { getGrades } from './main';
 
 let hasInitializedQuestions = false;
 
@@ -21,7 +22,8 @@ const useQandA = create<QandAStore>((set) => ({
   allQandAs: [],
   setCurrentQandA: (q) => set({ currentQandA: q }),
   updateAllQandAs() {
-    set({ allQandAs: getQandAs() });
+    const neQuestions = getQandAs();
+    set({ allQandAs: [...neQuestions] });
   },
 }));
 
@@ -46,6 +48,7 @@ function App() {
       <StatButton />
       <AnswerBar />
       <CurrentQuestion />
+      <AnswersContainer />
     </div>
   );
 }
@@ -94,7 +97,6 @@ function AnswerBar() {
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
         />
-        <button type="submit" className="send-button" disabled={!answer.trim()}></button>
       </form>
     </div>
   );
@@ -106,16 +108,86 @@ function CurrentQuestion() {
   const currentQuestion = currentQandA ? currentQandA.question : 'There is no current question.';
 
   if (currentQandA?.answer != null || currentQandA == null) {
-    return <p>New Question is loading</p>;
+    return <p className="loading-text">New Question is loading</p>;
   } else {
     return (
       <div className="current-question-container">
-        <h1 className="current-question">{currentQuestion}</h1>
+        <p className="current-question">{currentQuestion}</p>
       </div>
     );
   }
 }
 
+function AnswersContainer() {
+  const [isRevealed, toggleReveal] = useState(false);
+
+  const handleToggle = () => {
+    if (useQandA.getState().allQandAs.length > 0) {
+      toggleReveal(!isRevealed);
+    } else {
+      toggleReveal(false);
+    }
+  };
+
+  return (
+    <div className="answers-container">
+      <button className="reveal-answers-button" onClick={handleToggle}>
+        Reveal Answers
+      </button>
+      <GradeAnswersButton />
+      <AnswersDisplay isVisible={isRevealed} />
+    </div>
+  );
+}
+
+function GradeAnswersButton() {
+  const [isGrading, toggleGrading] = useState(false);
+  async function gradeAnswers() {
+    await getGrades();
+    useQandA.getState().updateAllQandAs();
+    toggleGrading(false);
+  }
+  const handlePress = async () => {
+    if (isGrading == false) {
+      toggleGrading(true);
+      await gradeAnswers();
+    }
+  };
+  return <button onClick={handlePress}>{isGrading ? 'Is grading' : 'Grade Answers'}</button>;
+}
+
+function AnswersDisplay({ isVisible }: { isVisible: boolean }) {
+  const questionlist: QandA[] = useQandA((state) => {
+    return state.allQandAs;
+  });
+
+  if (isVisible) {
+    return <ul>{questionlist.map((item, index) => AnswerCard(item, index))}</ul>;
+  }
+
+  return null;
+}
+
+function AnswerCard(item: QandA, number: number) {
+  return (
+    <li key={item.id}>
+      <div>
+        <span className="question-cell">{item.question}</span>
+        <span className="user-answer-cell">{item.answer}</span>
+        <span className="correct-answer-cell">
+          {item.correctanswer ? item.correctanswer : 'No correct answer provided'}
+        </span>
+        <span className="corectness-cell">
+          {item.completeness ? `Corectness: ${item.correctness}` : ''}
+        </span>
+        <span className="completness-cell">
+          {item.completeness ? `Completnes: ${item.completeness}` : ''}
+        </span>
+        <span className="score-cell">{item.score ? `Score: ${item.score}` : ''}</span>
+      </div>
+    </li>
+  );
+}
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
