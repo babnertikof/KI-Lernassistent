@@ -1,4 +1,3 @@
-import text from './assets/notizen.md?raw';
 import * as z from 'zod';
 
 const QandASchema = z.object({
@@ -26,10 +25,16 @@ export const ollamaGenerateResponseSchema = z.object({
   eval_duration: z.number(),
 });
 
+export type GenerationStatus = {
+  status: 'SUCCES' | 'NO FILES' | 'GENERATION_ERROR' | 'UNDER_CONSTRUCTION' | 'LOADING';
+};
+
 export type OllamaGenerateResponse = z.infer<typeof ollamaGenerateResponseSchema>;
 export type QandA = z.infer<typeof QandASchema>;
 
 const questions: QandA[] = [];
+const files: File[] = [];
+let cashedContents: string | null = null;
 
 async function callOllama(
   prompt: string,
@@ -54,11 +59,28 @@ async function callOllama(
   return data;
 }
 
-export let isFetchingQuestion = false;
+let isFetchingQuestion = false;
 
-export async function getQuestion(): Promise<QandA | null> {
+export function getIsFetchingQuestion() {
+  return isFetchingQuestion;
+}
+
+export async function getQuestion(): Promise<{
+  question: QandA | null;
+  Gstatus: GenerationStatus;
+}> {
   const underConstruction = false;
   isFetchingQuestion = true;
+  let generationStatus: GenerationStatus = { status: 'SUCCES' };
+  if (underConstruction) {
+    generationStatus.status = 'UNDER_CONSTRUCTION';
+    isFetchingQuestion = false;
+    return { question: null, Gstatus: generationStatus };
+  } else if (files.length < 1) {
+    generationStatus.status = 'NO FILES';
+    isFetchingQuestion = false;
+    return { question: null, Gstatus: generationStatus };
+  }
   const system = `You are a tutor asking open short answer questions on the provided study material.
 
 Provide only one question.
@@ -69,22 +91,22 @@ You will get a list of questions you have already asked — do not repeat them.
 Return ONLY a valid JSON object. No markdown, no code fences, no explanation, no extra text — just the raw JSON object.
 
 <studymaterial>
-${text}
+${await getFileContents()}
 </studymaterial>
 
 <schema>
 {"question": string, "correctanswer": string}
 </schema>`;
   const prompt = questions.length > 0 ? JSON.stringify(questions) : 'No previus questions';
-  const data = underConstruction
-    ? 'Under construction'
-    : (await callOllama(prompt, system, 'gemma4:e4b')).response;
+  const data = (await callOllama(prompt, system, 'gemma4:e4b')).response;
   let JsonData: Object;
   try {
     JsonData = JSON.parse(data);
   } catch (e) {
     console.error(`Result could not be parsed. Error: ${e}. Data: ${data}`);
-    return null;
+    generationStatus.status = 'GENERATION_ERROR';
+    isFetchingQuestion = false;
+    return { question: null, Gstatus: generationStatus };
   }
   JsonData = { ...JsonData, id: crypto.randomUUID() };
   const newQuestionData = JsonData;
@@ -93,10 +115,12 @@ ${text}
     questions.push(result.data);
   } else {
     console.error(`Question was not valid. Error: ${result.error}`);
-    return null;
+    generationStatus.status = 'GENERATION_ERROR';
+    isFetchingQuestion = false;
+    return { question: null, Gstatus: generationStatus };
   }
   isFetchingQuestion = false;
-  return result.data;
+  return { question: result.data, Gstatus: generationStatus };
 }
 
 export function storeAnswer(AiQuestion: string, UserAnswer: string) {
@@ -122,7 +146,7 @@ export async function getGrades() {
     correctnes: Is the answer correct? (scale of 0 to 10)
     completenes: Is the question completely answered? (scale of 0 to 10)
     score: (correctnes+completenes)/2. Round up or down as you see fit.
-    <notes>${text}</notes}
+    <notes>${await getFileContents()}</notes}
     <example_retunrscema> {
     "correctness": 10,
     "completeness": 6,
@@ -175,5 +199,41 @@ export async function getGrades() {
 }
 
 export function getQandAs(): QandA[] {
-  return questions;
+  return structuredClone(questions);
+}
+async function getFileContents(): Promise<string> {
+  if (cashedContents != null) {
+    return cashedContents;
+  }
+  return await loadFileContents();
+}
+
+async function loadFileContents(): Promise<string> {
+  const parts: string[] = [];
+  for (const file of files) {
+    const content = await file.text();
+    parts.push(`File: ${file.name}\n` + `${content}`);
+  }
+  return parts.join('\n\n');
+}
+
+export function uploadFile(newFile: File) {
+  if (files.some((file) => file.name == newFile.name)) {
+    return;
+  }
+  files.push(newFile);
+  cashedContents = null;
+}
+
+export function removeFile(fileToRemove: File) {
+  const index = files.findIndex((f) => f.name === fileToRemove.name);
+
+  if (index !== -1) {
+    files.splice(index, 1);
+  }
+  cashedContents = null;
+}
+
+export function getFileArray(): File[] {
+  return [...files];
 }
