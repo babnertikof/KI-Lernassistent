@@ -71,8 +71,8 @@ export default function App() {
       <CurrentQuestion />
       <AnswerBar />
       <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}><CircularProgress size={24} /></Box>}>
-        <WikiSearch />
         <SettingsPanel />
+        <WikiSearch />
         <ProviderSettings />
         <AnswersContainer />
       </Suspense>
