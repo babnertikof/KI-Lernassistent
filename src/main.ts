@@ -143,8 +143,8 @@ export async function getGrades() {
   if (dataToGrade.length > 0) {
     const system = `
     Your job is to grade the answer to a question based on notes. You will recieve the notes, the question and the answer and will have to grade every answer based on the following paramiters:
-    correctnes: Is the answer correct? (scale of 0 to 10)
-    completenes: Is the question completely answered? (scale of 0 to 10)
+    correctness: Is the answer correct? (scale of 0 to 10)
+    completeness: Is the question completely answered? (scale of 0 to 10)
     score: (correctnes+completenes)/2. Round up or down as you see fit.
     <notes>${await getFileContents()}</notes}
     <example_retunrscema> {
