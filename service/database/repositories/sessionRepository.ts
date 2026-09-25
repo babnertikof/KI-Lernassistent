@@ -1,47 +1,42 @@
-import { DbResult, Session } from "../db_types.ts";
+import { DbResult, Session, SessionSchema } from "../db_types.ts";
 import { getDBConnection } from "../index.ts";
-
-const db = getDBConnection()
+import {
+  deleteRecord,
+  getRecordById,
+  insertRecord,
+  validateTypes,
+} from "../repositoryHelpers.ts";
 
 export class SessionRepo {
+  db = getDBConnection();
+
   addSession(session: Session): DbResult<number> {
-    try {
-      const columns = Object.keys(session);
-      const placeholders = columns.map(() => "?").join(", ");
-      const query = `INSERT INTO Session (${columns.join(", ")}) VALUES (${placeholders})`;
+    return insertRecord(this.db, "Session", session);
+  }
 
-      const result = db.prepare(query).run(...Object.values(session));
+  get_Session(session_id: number): DbResult<Session> {
+    const result = getRecordById(this.db, "Session", "session_id", session_id);
 
-      return {
-        ok: true,
-        data: Number(result.lastInsertRowid),
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : "Unknown database error",
-      };
+    if (!result.ok) {
+      return result;
     }
+
+    return validateTypes(SessionSchema, result.data);
   }
 
   deleteSession(session_id: number): DbResult<number> {
-    try {
-      const result = db.prepare("DELETE FROM Session WHERE session_id = ?").run(session_id);
-
-      return {
-        ok: true,
-        data: Number(result.changes),
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : "Unknown database error",
-      };
-    }
+    return deleteRecord(this.db, "Session", "session_id", session_id);
   }
 }
 
-Deno.test({name:"SQL Test",fn(){
-    const repo = new SessionRepo
-    console.log(repo.deleteSession(2))
-}})
+Deno.test({
+  name: "SQL Test",
+  fn() {
+    const repo = new SessionRepo();
+    console.log(repo.deleteSession(4));
+    console.log(
+      repo.addSession({ session_id: 4, start_datetime: "MM-00", user_id: 0 }),
+    );
+    console.log(repo.get_Session(4));
+  },
+});

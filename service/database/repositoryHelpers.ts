@@ -1,0 +1,101 @@
+import type { DatabaseSync, SQLInputValue } from "node:sqlite";
+import { DbResult } from "./db_types.ts";
+import { z } from "@zod/zod";
+
+export function insertRecord(
+  db: DatabaseSync,
+  tableName: string,
+  record: object,
+): DbResult<number> {
+  try {
+    const columns = Object.keys(record);
+    const placeholders = columns.map(() => "?").join(", ");
+    const query = `INSERT INTO ${tableName} (${
+      columns.join(", ")
+    }) VALUES (${placeholders})`;
+    const values = Object.values(record) as SQLInputValue[];
+    const result = db.prepare(query).run(...values);
+
+    return {
+      ok: true,
+      data: Number(result.lastInsertRowid),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown database error",
+    };
+  }
+}
+
+export function deleteRecord(
+  db: DatabaseSync,
+  tableName: string,
+  idColumn: string,
+  id: SQLInputValue,
+): DbResult<number> {
+  try {
+    const query = `DELETE FROM ${tableName} WHERE ${idColumn} = ?`;
+    const result = db.prepare(query).run(id);
+
+    return {
+      ok: true,
+      data: Number(result.changes),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown database error",
+    };
+  }
+}
+
+export function getRecordById(
+  db: DatabaseSync,
+  tableName: string,
+  idColumn: string,
+  id: SQLInputValue,
+): DbResult<unknown> {
+  try {
+    const query = `SELECT * FROM ${tableName} WHERE ${idColumn} = ?`;
+    const record = db.prepare(query).get(id);
+
+    if (record === undefined) {
+      return {
+        ok: false,
+        error: "Record not found",
+      };
+    }
+
+    return {
+      ok: true,
+      data: record,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown database error",
+    };
+  }
+}
+
+export function validateTypes<T extends z.ZodType>(
+  schema: T,
+  data: unknown,
+): DbResult<z.infer<T>> {
+  const parseResult = schema.safeParse(data);
+  if (!parseResult.success) {
+    const errorMessage = parseResult.error.issues
+      .map((i) => `${i.path.join(".")}: ${i.message}`)
+      .join(", ");
+    return {
+      ok: false,
+      error: errorMessage,
+    };
+  }
+
+  return {
+    ok: true,
+    data: parseResult.data,
+  };
+}
