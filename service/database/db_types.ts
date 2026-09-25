@@ -1,3 +1,7 @@
+export type DbResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 export interface Session {
   session_id: number;
   start_datetime: string;
