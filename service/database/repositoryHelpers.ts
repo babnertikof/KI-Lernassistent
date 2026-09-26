@@ -51,12 +51,13 @@ export function deleteRecord(
   }
 }
 
-export function getRecordById(
+export function getRecordById<T extends z.ZodType>(
   db: DatabaseSync,
   tableName: string,
   idColumn: string,
   id: SQLInputValue,
-): DbResult<unknown> {
+  schema: T,
+): DbResult<z.infer<T>> {
   try {
     const query = `SELECT * FROM ${tableName} WHERE ${idColumn} = ?`;
     const record = db.prepare(query).get(id);
@@ -68,10 +69,7 @@ export function getRecordById(
       };
     }
 
-    return {
-      ok: true,
-      data: record,
-    };
+    return validateTypes(schema, record);
   } catch (error) {
     return {
       ok: false,

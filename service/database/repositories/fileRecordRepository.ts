@@ -4,7 +4,6 @@ import {
   deleteRecord,
   getRecordById,
   insertRecord,
-  validateTypes,
 } from "../repositoryHelpers.ts";
 
 export class FileRecordRepo {
@@ -17,16 +16,27 @@ export class FileRecordRepo {
     return deleteRecord(this.db, this.table_name, "file_id", FileRecord_id);
   }
   getFileRecord(FileRecord_id: number): DbResult<FileRecord> {
-    const result = getRecordById(
+    return getRecordById(
       this.db,
       this.table_name,
       "session_id",
       FileRecord_id,
+      FileRecordSchema,
     );
-    if (!result.ok) {
-      return result;
-    }
+  }
+  updateFilePath(fileId: number, newPath: string): DbResult<number> {
+    try {
+      const query = "UPDATE Files SET file_path = ? WHERE file_id = ?";
+      const result = this.db.prepare(query).run(newPath, fileId);
 
-    return validateTypes(FileRecordSchema, result.data);
+      return { ok: true, data: Number(result.changes) };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error
+          ? error.message
+          : "Unknown database error",
+      };
+    }
   }
 }

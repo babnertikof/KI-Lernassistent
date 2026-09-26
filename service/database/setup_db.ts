@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 
-export const db = new DatabaseSync("database.db");
+const db = new DatabaseSync("database.db");
 db.exec("PRAGMA foreign_keys = ON;");
 
 // 3. Execute the DDL script to create all tables

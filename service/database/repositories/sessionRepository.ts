@@ -4,7 +4,6 @@ import {
   deleteRecord,
   getRecordById,
   insertRecord,
-  validateTypes,
 } from "../repositoryHelpers.ts";
 
 export class SessionRepo {
@@ -19,13 +18,13 @@ export class SessionRepo {
   }
 
   getSession(session_id: number): DbResult<Session> {
-    const result = getRecordById(this.db, "Session", "session_id", session_id);
-
-    if (!result.ok) {
-      return result;
-    }
-
-    return validateTypes(SessionSchema, result.data);
+    return getRecordById(
+      this.db,
+      "Session",
+      "session_id",
+      session_id,
+      SessionSchema,
+    );
   }
 
   deleteSession(session_id: number): DbResult<number> {

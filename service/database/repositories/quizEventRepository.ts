@@ -4,7 +4,6 @@ import {
   deleteRecord,
   getRecordById,
   insertRecord,
-  validateTypes,
 } from "../repositoryHelpers.ts";
 
 export class QuizEventRepo {
@@ -21,16 +20,13 @@ export class QuizEventRepo {
   }
 
   getQuizEvent(event_id: number): DbResult<QuizEvent> {
-    const result = getRecordById(
+    return getRecordById(
       this.db,
       this.tableName,
       this.idName,
       event_id,
+      QuizEventSchema,
     );
-    if (!result.ok) {
-      return result;
-    }
-    return validateTypes(QuizEventSchema, result.data);
   }
 
   deleteQuizEvent(event_id: number): DbResult<number> {
