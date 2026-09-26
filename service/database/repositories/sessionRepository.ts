@@ -10,11 +10,12 @@ import {
 export class SessionRepo {
   db = getDBConnection();
 
-  addSession(session: Session): DbResult<number> {
+  addSession(session: Omit<Session, "session_id" | "start_datetime" | "user_id"> & {
+    user_id?: Session["user_id"]}): DbResult<number> {
     return insertRecord(this.db, "Session", session);
   }
 
-  get_Session(session_id: number): DbResult<Session> {
+  getSession(session_id: number): DbResult<Session> {
     const result = getRecordById(this.db, "Session", "session_id", session_id);
 
     if (!result.ok) {
@@ -33,10 +34,6 @@ Deno.test({
   name: "SQL Test",
   fn() {
     const repo = new SessionRepo();
-    console.log(repo.deleteSession(4));
-    console.log(
-      repo.addSession({ session_id: 4, start_datetime: "MM-00", user_id: 0 }),
-    );
-    console.log(repo.get_Session(4));
+    console.log(repo.deleteSession(4))
   },
 });

@@ -1,6 +1,7 @@
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
-import { DbResult } from "./db_types.ts";
+import { DbResult, Session, SessionSchema } from "./db_types.ts";
 import { z } from "@zod/zod";
+import { getDBConnection } from "./index.ts";
 
 export function insertRecord(
   db: DatabaseSync,
@@ -9,11 +10,10 @@ export function insertRecord(
 ): DbResult<number> {
   try {
     const columns = Object.keys(record);
-    const placeholders = columns.map(() => "?").join(", ");
-    const query = `INSERT INTO ${tableName} (${
-      columns.join(", ")
-    }) VALUES (${placeholders})`;
     const values = Object.values(record) as SQLInputValue[];
+    const query = columns.length === 0
+      ? `INSERT INTO ${tableName} DEFAULT VALUES`
+      : `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`;
     const result = db.prepare(query).run(...values);
 
     return {
