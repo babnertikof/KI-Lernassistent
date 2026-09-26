@@ -19,7 +19,7 @@ export function insertRecord(
 
     return {
       ok: true,
-      data: Number(result.lastInsertRowid),
+      data: Number(result.lastInsertRowid), //Is id because it gets inserted last for some reason.
     };
   } catch (error) {
     return {
