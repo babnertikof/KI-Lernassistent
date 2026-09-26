@@ -10,8 +10,11 @@ import {
 export class SessionRepo {
   db = getDBConnection();
 
-  addSession(session: Omit<Session, "session_id" | "start_datetime" | "user_id"> & {
-    user_id?: Session["user_id"]}): DbResult<number> {
+  addSession(
+    session: Omit<Session, "session_id" | "start_datetime" | "user_id"> & {
+      user_id?: Session["user_id"];
+    },
+  ): DbResult<number> {
     return insertRecord(this.db, "Session", session);
   }
 
@@ -34,6 +37,6 @@ Deno.test({
   name: "SQL Test",
   fn() {
     const repo = new SessionRepo();
-    console.log(repo.deleteSession(4))
+    console.log(repo.deleteSession(4));
   },
 });
