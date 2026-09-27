@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { DbResult, ModelResponse, ModelResponseSchema } from "../db_types.ts";
 import { getDBConnection } from "../index.ts";
 import {
@@ -7,7 +8,14 @@ import {
 } from "../repositoryHelpers.ts";
 
 export class ModelResponseRepo {
-  db = getDBConnection();
+  db;
+  constructor(optDB?: DatabaseSync) {
+    if(optDB){
+      this.db=optDB
+    } else{
+      this.db=getDBConnection()
+    }
+  }
   tableName = "Model_Responses";
   idName = "response_id";
   addModelResponse(

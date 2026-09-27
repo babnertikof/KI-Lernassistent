@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import {
   AssessmentScore,
   AssessmentScoreSchema,
@@ -12,7 +13,14 @@ import {
 import type { SQLInputValue } from "node:sqlite";
 
 export class AssessmentScoreRepo {
-  db = getDBConnection();
+  db;
+  constructor(optDB?: DatabaseSync) {
+    if(optDB){
+      this.db=optDB
+    } else{
+      this.db=getDBConnection()
+    }
+  }
   tableName = "Assessment_Scores";
   idName = "score_id";
 

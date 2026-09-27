@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { DbResult, QuizEvent, QuizEventSchema } from "../db_types.ts";
 import { getDBConnection } from "../index.ts";
 import {
@@ -7,7 +8,14 @@ import {
 } from "../repositoryHelpers.ts";
 
 export class QuizEventRepo {
-  db = getDBConnection();
+  db;
+  constructor(optDB?: DatabaseSync) {
+    if(optDB){
+      this.db=optDB
+    } else{
+      this.db=getDBConnection()
+    }
+  }
   tableName = "Quiz_Events";
   idName = "event_id";
 
@@ -33,24 +41,3 @@ export class QuizEventRepo {
     return deleteRecord(this.db, this.tableName, this.idName, event_id);
   }
 }
-
-Deno.test({
-  name: "QuizEventRepo Test",
-  fn() {
-    const repo = new QuizEventRepo();
-    const addData = repo.addQuizEvent({
-      session_id: null,
-      prompt_text: "Hello",
-      executed_model: null,
-      extra_instruction: null,
-    });
-    console.log(addData);
-    if (!addData.ok) {
-      return;
-    }
-    const getData = repo.getQuizEvent(addData.data);
-    console.log(getData);
-    const removeData = repo.deleteQuizEvent(addData.data);
-    console.log(removeData);
-  },
-});

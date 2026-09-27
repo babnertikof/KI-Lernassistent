@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { DbResult, FileRecord, FileRecordSchema } from "../db_types.ts";
 import { getDBConnection } from "../index.ts";
 import {
@@ -7,9 +8,19 @@ import {
 } from "../repositoryHelpers.ts";
 
 export class FileRecordRepo {
-  db = getDBConnection();
+  db;
+  constructor(optDB?: DatabaseSync) {
+    if(optDB){
+      this.db=optDB
+    } else{
+      this.db=getDBConnection()
+    }
+  }
+
   table_name = "Files";
-  addFileRecord(fileRecord: FileRecord): DbResult<number> {
+  addFileRecord(
+    fileRecord: Omit<FileRecord, "file_id" | "upload_timestamp">,
+  ): DbResult<number> {
     return insertRecord(this.db, this.table_name, fileRecord);
   }
   deleteFileRecord(FileRecord_id: number): DbResult<number> {

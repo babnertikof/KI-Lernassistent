@@ -1,6 +1,9 @@
 {
   "tasks": {
-    "dev": "deno run --watch --allow-net main.ts"
+    "dev": "deno run --watch --allow-read --allow-write service/database/setup_db.ts",
+    "db:setup": "deno run --allow-read --allow-write service/database/setup_db.ts",
+    "test": "deno test --allow-read --allow-write service/database/tests/**/*.ts",
+    "check": "deno check service/**/*.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

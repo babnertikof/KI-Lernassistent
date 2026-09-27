@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { getDBConnection } from "../index.ts";
 import { DbResult, QuizQuestion, QuizQuestionSchema } from "../db_types.ts";
 import {
@@ -7,7 +8,14 @@ import {
 } from "../repositoryHelpers.ts";
 
 export class QuizQuestionRepo {
-  db = getDBConnection();
+  db;
+  constructor(optDB?: DatabaseSync) {
+    if(optDB){
+      this.db=optDB
+    } else{
+      this.db=getDBConnection()
+    }
+  }
   tableName = "Quiz_Questions";
   idName = "question_id";
 

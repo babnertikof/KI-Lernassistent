@@ -42,7 +42,7 @@ export const ModelResponseSchema = z.object({
   response_id: z.number(),
   question_id: z.number().nullable(),
   expected_answer: z.string().nullable(),
-  is_ground_truth: z.union([z.literal(0), z.literal(1)]),
+  is_ground_truth: z.union([z.literal(0), z.literal(1)]).nullable(),
 });
 export type ModelResponse = z.infer<typeof ModelResponseSchema>;
 
