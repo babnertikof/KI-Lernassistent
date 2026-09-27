@@ -1,66 +1,67 @@
-import { z } from "@zod/zod";
+import { v } from "@oak/acorn";
 
 export type DbResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
-export const SessionSchema = z.object({
-  session_id: z.number(),
-  start_datetime: z.string(),
-  user_id: z.number().nullable(),
+export const SessionSchema = v.object({
+  session_id: v.number(),
+  start_datetime: v.string(),
+  user_id: v.nullable(v.number()),
 });
-export type Session = z.infer<typeof SessionSchema>;
 
-export const FileRecordSchema = z.object({
-  file_id: z.number(),
-  session_id: z.number().nullable(),
-  filename: z.string(),
-  mimetype: z.string().nullable(),
-  file_path: z.string(),
-  upload_timestamp: z.string(),
-});
-export type FileRecord = z.infer<typeof FileRecordSchema>;
+export type Session = v.InferOutput<typeof SessionSchema>;
 
-export const QuizEventSchema = z.object({
-  event_id: z.number(),
-  session_id: z.number().nullable(),
-  prompt_text: z.string(),
-  executed_model: z.string().nullable(),
-  extra_instruction: z.string().nullable(),
-  run_timestamp: z.string(),
+export const FileRecordSchema = v.object({
+  file_id: v.number(),
+  session_id: v.nullable(v.number()),
+  filename: v.string(),
+  mimetype: v.nullable(v.string()),
+  file_path: v.string(),
+  upload_timestamp: v.string(),
 });
-export type QuizEvent = z.infer<typeof QuizEventSchema>;
+export type FileRecord = v.InferOutput<typeof FileRecordSchema>;
 
-export const QuizQuestionSchema = z.object({
-  question_id: z.number(),
-  event_id: z.number().nullable(),
-  question_text: z.string(),
+export const QuizEventSchema = v.object({
+  event_id: v.number(),
+  session_id: v.nullable(v.number()),
+  prompt_text: v.string(),
+  executed_model: v.nullable(v.string()),
+  extra_instruction: v.nullable(v.string()),
+  run_timestamp: v.string(),
 });
-export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
+export type QuizEvent = v.InferOutput<typeof QuizEventSchema>;
 
-export const ModelResponseSchema = z.object({
-  response_id: z.number(),
-  question_id: z.number().nullable(),
-  expected_answer: z.string().nullable(),
-  is_ground_truth: z.union([z.literal(0), z.literal(1)]).nullable(),
+export const QuizQuestionSchema = v.object({
+  question_id: v.number(),
+  event_id: v.nullable(v.number()),
+  question_text: v.string(),
 });
-export type ModelResponse = z.infer<typeof ModelResponseSchema>;
+export type QuizQuestion = v.InferOutput<typeof QuizQuestionSchema>;
 
-export const UserSubmissionSchema = z.object({
-  submission_id: z.number(),
-  question_id: z.number().nullable(),
-  user_answer: z.string(),
-  submission_timestamp: z.string(),
+export const ModelResponseSchema = v.object({
+  response_id: v.number(),
+  question_id: v.nullable(v.number()),
+  expected_answer: v.nullable(v.string()),
+  is_ground_truth: v.nullable(v.union([v.literal(0), v.literal(1)])),
 });
-export type UserSubmission = z.infer<typeof UserSubmissionSchema>;
+export type ModelResponse = v.InferOutput<typeof ModelResponseSchema>;
 
-export const AssessmentScoreSchema = z.object({
-  score_id: z.number(),
-  submission_id: z.number().nullable(),
-  correctness_score: z.number().nullable(),
-  completeness_score: z.number().nullable(),
-  feedback_text: z.string().nullable(),
-  graded_by: z.number().nullable(),
-  grading_timestamp: z.string(),
+export const UserSubmissionSchema = v.object({
+  submission_id: v.number(),
+  question_id: v.nullable(v.number()),
+  user_answer: v.string(),
+  submission_timestamp: v.string(),
 });
-export type AssessmentScore = z.infer<typeof AssessmentScoreSchema>;
+export type UserSubmission = v.InferOutput<typeof UserSubmissionSchema>;
+
+export const AssessmentScoreSchema = v.object({
+  score_id: v.number(),
+  submission_id: v.nullable(v.number()),
+  correctness_score: v.nullable(v.number()),
+  completeness_score: v.nullable(v.number()),
+  feedback_text: v.nullable(v.string()),
+  graded_by: v.nullable(v.number()),
+  grading_timestamp: v.string(),
+});
+export type AssessmentScore = v.InferOutput<typeof AssessmentScoreSchema>;

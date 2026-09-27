@@ -6,8 +6,8 @@
     "check": "deno check service/**/*.ts"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1",
-    "@zod/zod": "jsr:@zod/zod@^4.6.5"
+    "@oak/acorn": "jsr:@oak/acorn@^1.1.1",
+    "@std/assert": "jsr:@std/assert@1"
   },
   "compilerOptions": {
     "strict": true

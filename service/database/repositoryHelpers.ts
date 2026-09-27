@@ -1,6 +1,6 @@
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import { DbResult } from "./db_types.ts";
-import { z } from "@zod/zod";
+import { v } from "@oak/acorn";
 
 export function insertRecord(
   db: DatabaseSync,
@@ -51,13 +51,13 @@ export function deleteRecord(
   }
 }
 
-export function getRecordById<T extends z.ZodType>(
+export function getRecordById<T extends v.GenericSchema>(
   db: DatabaseSync,
   tableName: string,
   idColumn: string,
   id: SQLInputValue,
   schema: T,
-): DbResult<z.infer<T>> {
+): DbResult<v.InferOutput<T>> {
   try {
     const query = `SELECT * FROM ${tableName} WHERE ${idColumn} = ?`;
     const record = db.prepare(query).get(id);
@@ -78,23 +78,21 @@ export function getRecordById<T extends z.ZodType>(
   }
 }
 
-export function validateTypes<T extends z.ZodType>(
+export function validateTypes<T extends v.GenericSchema>(
   schema: T,
   data: unknown,
-): DbResult<z.infer<T>> {
-  const parseResult = schema.safeParse(data);
+): DbResult<v.InferOutput<T>> {
+  const parseResult = v.safeParse(schema,data);
   if (!parseResult.success) {
-    const errorMessage = parseResult.error.issues
-      .map((i) => `${i.path.join(".")}: ${i.message}`)
-      .join(", ");
+    const errorMessage = v.flatten(parseResult.issues).nested
     return {
       ok: false,
-      error: errorMessage,
+      error: JSON.stringify(errorMessage??{},null,2),
     };
   }
 
   return {
     ok: true,
-    data: parseResult.data,
+    data: parseResult.output,
   };
 }

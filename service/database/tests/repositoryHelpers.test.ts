@@ -1,10 +1,10 @@
 import { assertEquals } from "@std/assert";
 import { DatabaseSync } from "node:sqlite";
-import { z } from "@zod/zod";
+import { v } from "@oak/acorn";
 import { insertRecord, validateTypes } from "../repositoryHelpers.ts";
 
 Deno.test("validateTypes returns a helpful error for invalid inputs", () => {
-  const schema = z.object({ user_id: z.number() });
+  const schema = v.object({user_id:v.number()});
   const result = validateTypes(schema, { user_id: "nope" });
 
   assertEquals(result.ok, false);
