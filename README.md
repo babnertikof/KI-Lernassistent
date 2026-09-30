@@ -16,7 +16,7 @@ This project is built with React, TypeScript, Vite, and Material UI.
 - Work with different AI providers
 - Save files locally in the browser
 
-![alt text](image.png)
+![Screenshot of the application](screenshot.png)
 
 ## Main features
 
